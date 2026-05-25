@@ -1,0 +1,47 @@
+﻿{
+	"pages": [
+		{
+			"path": "pages/login/login",
+			"style": {
+				"navigationBarTitleText": "登录"
+			}
+		},
+		{
+			"path": "pages/register/register",
+			"style": {
+				"navigationBarTitleText": "注册"
+			}
+		},
+		{
+			"path": "pages/home/home",
+			"style": {
+				"navigationBarTitleText": "学习仪表盘"
+			}
+		},
+		{
+			"path": "pages/profile/profile",
+			"style": {
+				"navigationBarTitleText": "学习画像"
+			}
+		},
+		{
+			"path": "pages/resources/resources",
+			"style": {
+				"navigationBarTitleText": "资源中心"
+			}
+		},
+		{
+			"path": "pages/learning-path/learning-path",
+			"style": {
+				"navigationBarTitleText": "学习路径"
+			}
+		}
+	],
+	"globalStyle": {
+		"navigationBarTextStyle": "white",
+		"navigationBarTitleText": "个性化学习平台",
+		"navigationBarBackgroundColor": "#4A90D9",
+		"backgroundColor": "#F5F7FA"
+	},
+	"uniIdRouter": {}
+}
