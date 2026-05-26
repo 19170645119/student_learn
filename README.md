@@ -78,9 +78,16 @@ npm --version      # 确认 npm 可用
 CREATE DATABASE student_learn CHARACTER SET utf8mb4;
 ```
 
+### MySQL 管理工具（推荐）
+| 工具 | 说明 | 下载 |
+|------|------|------|
+| Navicat | 可视化数据库管理 | https://www.navicat.com/ |
+| DBeaver | 免费开源替代 | https://dbeaver.io/ |
+
 ### Redis（可选）
 - 学习路径功能用到，不装也能运行其他功能
 - Windows 用户可从 https://github.com/tporadowski/redis/releases 下载
+- 推荐管理工具：[Tiny RDM](https://redis.tinycraft.cc/)（轻量 Redis 桌面管理器）
 
 ---
 
