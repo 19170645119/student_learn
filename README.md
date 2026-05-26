@@ -38,6 +38,15 @@ student_learn/
 
 ---
 
+## 📦 依赖安装
+
+| 位置 | 命令 | 说明 |
+|------|------|------|
+| `backend/requirements.txt` | `pip install -r requirements.txt` | Python 后端（11 个包） |
+| `frontend/package.json` | `npm install` | Vue/Vite/marked/mermaid |
+
+---
+
 ## 🚀 快速开始
 
 ### 1. 环境准备
