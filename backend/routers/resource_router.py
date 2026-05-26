@@ -272,6 +272,21 @@ async def get_resources(
 
 # ==================== RESOURCE DETAIL (LAST) ====================
 
+@router.delete("/{resource_id}")
+async def delete_resource(
+    resource_id: int,
+    user_id: int = Depends(auth_handler.auth_access_dependency),
+    db: AsyncSession = Depends(get_db),
+):
+    repo = ResourceRepository(db)
+    r = await repo.get_by_id(resource_id)
+    if not r or r.user_id != user_id:
+        raise HTTPException(404, detail="?????")
+    await repo.delete(resource_id)
+    await db.commit()
+    return {"message": "???"}
+
+
 @router.get("/{resource_id}")
 async def get_resource(
     resource_id: int,

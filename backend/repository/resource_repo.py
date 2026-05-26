@@ -42,6 +42,12 @@ class ResourceRepository:
         stmt = stmt.order_by(desc(LearningResource.created_time)).limit(limit)
         result = await self.session.execute(stmt)
         return list(result.scalars().all())
+
+    async def delete(self, resource_id: int):
+        await self.session.execute(
+            delete(LearningResource).filter(LearningResource.id == resource_id)
+        )
+
 from models.resource import ResourceSession
 from datetime import datetime
 from sqlalchemy import delete

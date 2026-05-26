@@ -129,7 +129,8 @@ import { useRouter } from 'vue-router'
 import {
   getDocs, getChapters, generateDocStream, resourceChat,
   getResourceSessions, createResourceSession,
-  deleteResourceSession, renameResourceSession, getResourceSession
+  deleteResourceSession, renameResourceSession, getResourceSession,
+  deleteDoc
 } from '../http/http.js'
 import { marked } from 'marked'
 
@@ -304,6 +305,19 @@ function quickAsk(chapter) {
   send()
 }
 
+async function deleteDocument(doc) {
+  if (!confirm('?????' + doc.title + '??')) return
+  try {
+    await deleteDoc(doc.id)
+    docs.value = docs.value.filter(x => x.id !== doc.id)
+    if (currentDoc.value && currentDoc.value.id === doc.id) {
+      currentDoc.value = null
+    }
+  } catch (e) {
+    alert('?????' + e.message)
+  }
+}
+
 function selectDoc(doc) {
   currentDoc.value = doc
   previewTab.value = 'current'
@@ -401,4 +415,6 @@ h1 { font-size: 20px; }
 .h-title { flex: 1; font-size: 13px; color: #303133; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .h-time { font-size: 11px; color: #909399; white-space: nowrap; }
 .h-status { font-size: 13px; }
+.h-delete { padding: 2px 6px; background: none; border: none; font-size: 14px; cursor: pointer; opacity: 0.4; flex-shrink: 0; }
+.h-delete:hover { opacity: 1; color: #f56c6c; }
 </style>

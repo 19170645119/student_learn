@@ -118,6 +118,9 @@ export const generateDocStream = async (chapterId, userQuery, onChunk, onDone, o
   }
 }
 
+// Resource Docs
+export const deleteDoc = (id) => del('/resource/' + id)
+
 // Resource Sessions
 export const getResourceSessions = () => get('/resource/sessions')
 export const createResourceSession = (title) => post('/resource/sessions', { title })
