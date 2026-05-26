@@ -22,7 +22,11 @@
         <div class="tl-line" v-if="i < nodes.length - 1"></div>
       </div>
     </div>
-    <div v-else class="empty">还没有学习路径，请先生成</div>
+    <div v-else class="empty">
+      <p>还没有学习路径</p>
+      <p class="empty-hint">学习路径需要基于你的学习画像生成</p>
+      <button class="gen-btn outline" @click="$router.push('/profile')">👉 先去完善学习画像</button>
+    </div>
   </div>
 </template>
 
@@ -44,7 +48,14 @@ async function generate() {
     const r = await getLearningPath()
     nodes.value = r.nodes || []
     alert('路径生成成功')
-  } catch (e) { alert(e.message || '生成失败') }
+  } catch (e) {
+    const msg = e.message || '生成失败'
+    if (msg.includes('学习画像')) {
+      alert('请先去「学习画像」页面完成画像构建，再生成学习路径')
+    } else {
+      alert(msg)
+    }
+  }
   genLoading.value = false
 }
 </script>
@@ -56,6 +67,7 @@ async function generate() {
 h1 { font-size: 20px; }
 .gen-btn { width: 100%; height: 44px; background: #4A90D9; color: #fff; border: none; border-radius: 10px; font-size: 15px; cursor: pointer; margin-bottom: 20px; }
 .gen-btn:disabled { opacity: 0.6; }
+.gen-btn.outline { background: #e6f0fa; color: #4A90D9; }
 .timeline { padding-left: 40px; position: relative; }
 .tl-item { position: relative; padding-bottom: 24px; }
 .tl-dot { width: 36px; height: 36px; border-radius: 18px; background: #4A90D9; color: #fff; text-align: center; line-height: 36px; font-size: 14px; font-weight: bold; position: absolute; left: -50px; top: 4px; }
@@ -65,5 +77,6 @@ h1 { font-size: 20px; }
 .tags { display: flex; gap: 6px; flex-wrap: wrap; }
 .tag { font-size: 12px; background: #e6f0fa; color: #4A90D9; padding: 2px 10px; border-radius: 6px; }
 .tl-line { position: absolute; left: -33px; top: 40px; width: 2px; height: calc(100% - 16px); background: #e8e8e8; }
-.empty { text-align: center; padding: 60px; color: #909399; font-size: 15px; }
+.empty { text-align: center; padding: 60px 20px; color: #909399; font-size: 15px; }
+.empty-hint { font-size: 13px; margin: 8px 0 16px; color: #c0c4cc; }
 </style>

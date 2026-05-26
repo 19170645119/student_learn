@@ -1,4 +1,4 @@
-from . import Base
+﻿from . import Base
 from sqlalchemy.orm import mapped_column, Mapped
 from sqlalchemy import Integer, String, DateTime, Text, JSON, ForeignKey
 from datetime import datetime
@@ -8,6 +8,7 @@ class ConversationSession(Base):
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
     user_id: Mapped[int] = mapped_column(Integer, ForeignKey("user.id", ondelete="CASCADE"))
     title: Mapped[str] = mapped_column(String(100), default="画像构建对话")
+    source: Mapped[str] = mapped_column(String(20), default="profile")
     status: Mapped[str] = mapped_column(String(20), default="active")
     messages: Mapped[list] = mapped_column(JSON, default=list, comment="[{role, content, created_time}]")
     created_time: Mapped[datetime] = mapped_column(DateTime, default=datetime.now)

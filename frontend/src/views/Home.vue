@@ -9,35 +9,27 @@
     </header>
 
     <div class="grid">
-      <div class="card" @click="$router.push('/profile')">
+      <div class="card" @click="router.push('/profile')">
         <span class="icon">📊</span>
         <h3>学习画像</h3>
         <p>AI对话构建专属画像</p>
       </div>
-      <div class="card" @click="$router.push('/resources')">
+      <div class="card" @click="router.push('/resources')">
         <span class="icon">📚</span>
         <h3>资源中心</h3>
-        <p>多模态学习资源</p>
+        <p>AI生成课程文档</p>
       </div>
-      <div class="card" @click="$router.push('/learning-path')">
+      <div class="card" @click="router.push('/learning-path')">
         <span class="icon">🗺️</span>
         <h3>学习路径</h3>
         <p>个性化路径规划</p>
       </div>
     </div>
 
-    <div class="section" v-if="recommends.length">
-      <h2>📌 推荐学习</h2>
-      <div class="rec-item" v-for="r in recommends.slice(0,3)" :key="r.node_id">
-        <strong>{{ r.node_title }}</strong>
-        <span class="badge">{{ r.resources?.length || 0 }} 个资源</span>
-      </div>
-    </div>
-
     <div class="section">
       <h2>⚡ 快速操作</h2>
-      <button class="btn" @click="$router.push('/resources')">生成学习资源</button>
-      <button class="btn outline" @click="$router.push('/learning-path')">查看学习路径</button>
+      <button class="btn" @click="router.push('/resources')">生成学习资源</button>
+      <button class="btn outline" @click="router.push('/learning-path')">查看学习路径</button>
     </div>
   </div>
 </template>
@@ -45,19 +37,13 @@
 <script setup>
 import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
-import { getRecommendResources } from '../http/http.js'
 
 const router = useRouter()
 const username = ref('同学')
-const recommends = ref([])
 
-onMounted(async () => {
-  try {
-    const u = JSON.parse(localStorage.getItem('user') || '{}')
-    username.value = u.username || '同学'
-    const r = await getRecommendResources()
-    recommends.value = r.resources || []
-  } catch (e) { /* ignore */ }
+onMounted(() => {
+  const u = JSON.parse(localStorage.getItem('user') || '{}')
+  username.value = u.username || '同学'
 })
 
 function logout() {
@@ -83,8 +69,6 @@ h3 { font-size: 16px; color: #303133; margin-bottom: 4px; }
 .card p { font-size: 12px; color: #909399; }
 .section { background: #fff; border-radius: 14px; padding: 20px; margin-bottom: 20px; box-shadow: var(--shadow); }
 .section h2 { font-size: 18px; margin-bottom: 14px; }
-.rec-item { display: flex; justify-content: space-between; align-items: center; padding: 10px 0; border-bottom: 1px solid #f0f0f0; }
-.badge { font-size: 12px; background: #e6f0fa; color: #4A90D9; padding: 2px 10px; border-radius: 10px; }
 .btn { width: 100%; height: 44px; background: #4A90D9; color: #fff; border: none; border-radius: 10px; font-size: 15px; cursor: pointer; margin-bottom: 10px; }
 .btn.outline { background: #e6f0fa; color: #4A90D9; }
 </style>

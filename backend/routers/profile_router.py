@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Body, Depends, HTTPException
+﻿from fastapi import APIRouter, Body, Depends, HTTPException
 from fastapi.responses import StreamingResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 import json
@@ -48,7 +48,7 @@ async def list_sessions(
     db: AsyncSession = Depends(get_db),
 ):
     repo = SessionRepository(db)
-    sessions = await repo.get_by_user(user_id)
+    sessions = await repo.get_by_user(user_id, source="profile")
     return [{"id": s.id, "title": s.title, "status": s.status,
              "msg_count": len(s.messages or []),
              "created_time": s.created_time.isoformat() if s.created_time else "",
@@ -191,7 +191,7 @@ async def chat_profile(
     chat_history = conv_session.messages or []
 
     # 加载所有会话的消息用于综合画像分析
-    all_sessions = await s_repo.get_by_user(user_id)
+    all_sessions = await s_repo.get_by_user(user_id, source="profile")
     all_history = []
     for sess in all_sessions:
         for m in (sess.messages or []):

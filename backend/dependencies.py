@@ -5,6 +5,14 @@ from models import AsyncSessionFactory
 import redis.asyncio as aioredis
 import settings
 
+async def get_db() -> AsyncSession:
+    s = AsyncSessionFactory()
+    try:
+        yield s
+    finally:
+        await s.close()
+
+
 async def get_session() -> AsyncSession:
     session = AsyncSessionFactory()
     try:

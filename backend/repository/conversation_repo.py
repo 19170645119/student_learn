@@ -1,4 +1,4 @@
-from models import AsyncSession
+﻿from models import AsyncSession
 from models.conversation import ConversationSession, MemoryEntry
 from sqlalchemy import select, delete
 from datetime import datetime
@@ -7,12 +7,12 @@ class SessionRepository:
     def __init__(self, session: AsyncSession):
         self.session = session
 
-    async def get_by_user(self, user_id: int) -> list[ConversationSession]:
-        result = await self.session.execute(
-            select(ConversationSession)
-            .filter(ConversationSession.user_id == user_id)
-            .order_by(ConversationSession.updated_time.desc())
-        )
+    async def get_by_user(self, user_id: int, source: str = None) -> list[ConversationSession]:
+        stmt = select(ConversationSession).filter(ConversationSession.user_id == user_id)
+        if source:
+            stmt = stmt.filter(ConversationSession.source == source)
+        stmt = stmt.order_by(ConversationSession.updated_time.desc())
+        result = await self.session.execute(stmt)
         return result.scalars().all()
 
     async def get_by_id(self, session_id: int) -> ConversationSession | None:
@@ -20,9 +20,9 @@ class SessionRepository:
             select(ConversationSession).filter(ConversationSession.id == session_id)
         )
 
-    async def create(self, user_id: int, title: str = "画像构建对话") -> ConversationSession:
+    async def create(self, user_id: int, title: str = "画像构建对话", source: str = "profile") -> ConversationSession:
         async with self.session.begin_nested():
-            s = ConversationSession(user_id=user_id, title=title)
+            s = ConversationSession(user_id=user_id, title=title, source=source)
             self.session.add(s)
             await self.session.flush()
             return s
@@ -36,9 +36,14 @@ class SessionRepository:
     async def append_message(self, session_id: int, role: str, content: str):
         s = await self.get_by_id(session_id)
         if s:
-            s.messages = (s.messages or []) + [{"role": role, "content": content}]
+            s.messages = (s.messages or []) + [{"role": role, "content": content, "created_time": datetime.now().isoformat()}]
             s.messages = s.messages[-50:]
             s.updated_time = datetime.now()
+
+    async def rename(self, session_id: int, title: str):
+        s = await self.get_by_id(session_id)
+        if s:
+            s.title = title
 
 
 class MemoryRepository:
