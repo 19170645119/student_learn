@@ -1,8 +1,9 @@
-﻿from openai import AsyncOpenAI
+﻿import os
+from openai import AsyncOpenAI
 
 client = AsyncOpenAI(
     base_url="https://dashscope.aliyuncs.com/compatible-mode/v1",
-    api_key="sk-0a51cafd1b6e421499c98e796f907491",
+    api_key=os.getenv("DASHSCOPE_API_KEY", ""),
 )
 
 async def chat(messages: list) -> str:
