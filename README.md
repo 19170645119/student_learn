@@ -49,12 +49,44 @@ student_learn/
 
 ## 🚀 快速开始
 
-### 1. 环境准备
+## 🖥️ 需要安装的软件
 
-- Python 3.13+
-- Node.js 18+
-- MySQL 8.0+
-- Redis 6.0+（可选）
+| 软件 | 最低版本 | 必须 | 下载地址 |
+|------|----------|------|----------|
+| Python | 3.13+ | ✅ 是 | https://www.python.org/downloads/ |
+| Node.js | 18+ | ✅ 是 | https://nodejs.org/ |
+| MySQL | 8.0+ | ✅ 是 | https://dev.mysql.com/downloads/ |
+| Redis | 6.0+ | ❌ 可选 | https://redis.io/download/ |
+| Git | 任意 | ✅ 是 | https://git-scm.com/ |
+
+### Python 安装后验证
+```bash
+python --version   # 应显示 3.13.x
+pip --version      # 确认 pip 可用
+```
+
+### Node.js 安装后验证
+```bash
+node --version     # 应显示 18.x 或更高
+npm --version      # 确认 npm 可用
+```
+
+### MySQL 安装后配置
+1. 安装时设置 root 密码
+2. 创建数据库：
+```sql
+CREATE DATABASE student_learn CHARACTER SET utf8mb4;
+```
+
+### Redis（可选）
+- 学习路径功能用到，不装也能运行其他功能
+- Windows 用户可从 https://github.com/tporadowski/redis/releases 下载
+
+---
+
+## 🚀 快速开始
+
+### 1. 环境准备
 
 ### 2. 创建数据库
 
