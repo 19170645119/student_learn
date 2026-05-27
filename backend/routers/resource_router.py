@@ -1,5 +1,6 @@
-import traceback, json
+import traceback, json, datetime
 from fastapi import APIRouter, Depends, HTTPException, Query
+from pydantic import BaseModel
 from fastapi.responses import StreamingResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 from dependencies import get_db
@@ -9,6 +10,8 @@ from repository.profile_repo import ProfileRepository
 from repository.conversation_repo import MemoryRepository
 from models import AsyncSessionFactory
 from core.agents.doc_agent import generate_doc, generate_doc_stream
+from core.agents.mindmap_agent import generate_mindmap, generate_mindmap_stream
+from core.agents.quiz_agent import generate_quiz
 from core.agents.resource_chat_agent import resource_chat
 from core.auth import AuthHandler
 from schemas.resource import ResourceChatIn, ResourceGenerateIn, ResourceOut, ResourceSessionCreateIn, ResourceSessionRenameIn
@@ -77,38 +80,67 @@ async def generate_resources(
     user_id: int = Depends(auth_handler.auth_access_dependency),
     db: AsyncSession = Depends(get_db),
 ):
-    print(f"[Resource] POST /generate chapter_id={data.chapter_id}")
+    rtype = data.resource_types[0] if data.resource_types else "doc"
+    print(f"[Resource] POST /generate chapter_id={data.chapter_id} rtype={rtype}")
+
     knowledge_repo = KnowledgeRepository(db)
     chapter = await knowledge_repo.get_by_id(data.chapter_id)
     if chapter:
         title = chapter.title; chapter_content = chapter.content or ""; cid = data.chapter_id
     else:
-        title = data.user_query or f"???? #{data.chapter_id}"; chapter_content = ""; cid = None
+        title = data.user_query or f"\u672a\u77e5\u4e3b\u9898 #{data.chapter_id}"; chapter_content = ""; cid = None
 
     profile_repo = ProfileRepository(db)
     profile = await profile_repo.get_by_user_id(user_id)
     profile_dict = _build_profile_dict(profile)
 
+    extra = data.extra or {}
     resource_repo = ResourceRepository(db)
     created = await resource_repo.create(
-        user_id=user_id, resource_type="doc", title=title,
+        user_id=user_id, resource_type=rtype, title=title,
         chapter_id=data.chapter_id if chapter else None, status="generating",
     )
+
     try:
-        content = await generate_doc(
-            chapter_title=title, chapter_content=chapter_content,
-            chapter_id=cid, profile=profile_dict,
-            user_query=data.user_query if not chapter else None,
-        )
+        if rtype == "mindmap":
+            content = await generate_mindmap(
+                chapter_title=title, chapter_content=chapter_content,
+                chapter_id=cid, profile=profile_dict,
+                user_query=data.user_query if not chapter else None,
+                extra=extra,
+            )
+        elif rtype == "quiz":
+            difficulty = extra.get("difficulty", "medium")
+            count = int(extra.get("count", 5))
+            question_type = extra.get("question_type", None)
+            questions = await generate_quiz(
+                chapter_title=title, chapter_content=chapter_content,
+                chapter_id=cid, difficulty=difficulty, count=count,
+                profile=profile_dict, question_type=question_type,
+            )
+            content = json.dumps(questions, ensure_ascii=False)
+            await resource_repo.update(created.id, content=content, status="completed",
+                                       extra_data={"difficulty": difficulty, "count": count, "questions": questions})
+            await db.commit()
+            r = await resource_repo.get_by_id(created.id)
+            return {"id": r.id, "title": r.title, "content": content, "resource_type": rtype,
+                    "status": "completed", "extra_data": r.extra_data,
+                    "created_time": r.created_time.isoformat() if r.created_time else ""}
+        else:
+            content = await generate_doc(
+                chapter_title=title, chapter_content=chapter_content,
+                chapter_id=cid, profile=profile_dict,
+                user_query=data.user_query if not chapter else None,
+            )
         r = await resource_repo.update(created.id, content=content, status="completed")
         await db.commit()
-        return {"id": r.id, "title": r.title, "content": content, "resource_type": "doc",
+        return {"id": r.id, "title": r.title, "content": content, "resource_type": rtype,
                 "status": "completed", "created_time": r.created_time.isoformat() if r.created_time else ""}
     except Exception as e:
         traceback.print_exc()
         await resource_repo.update(created.id, status="failed")
         await db.commit()
-        raise HTTPException(500, detail=f"??????: {str(e)}")
+        raise HTTPException(500, detail=f"\u751f\u6210\u5931\u8d25: {str(e)}")
 
 
 @router.post("/generate/stream")
@@ -117,6 +149,8 @@ async def generate_stream(
     user_id: int = Depends(auth_handler.auth_access_dependency),
     db: AsyncSession = Depends(get_db),
 ):
+    rtype = data.resource_types[0] if data.resource_types else "doc"
+    print(f"[Resource] POST /generate/stream chapter_id={data.chapter_id} rtype={rtype}")
     knowledge_repo = KnowledgeRepository(db)
     chapter = await knowledge_repo.get_by_id(data.chapter_id)
     if chapter:
@@ -128,9 +162,10 @@ async def generate_stream(
     profile = await profile_repo.get_by_user_id(user_id)
     profile_dict = _build_profile_dict(profile)
 
+    rtype = data.resource_types[0] if data.resource_types else "doc"
     resource_repo = ResourceRepository(db)
     created = await resource_repo.create(
-        user_id=user_id, resource_type="doc", title=title,
+        user_id=user_id, resource_type=rtype, title=title,
         chapter_id=data.chapter_id if chapter else None, status="generating",
     )
     await db.commit()
@@ -138,7 +173,8 @@ async def generate_stream(
     async def event_stream():
         full_text = ""
         try:
-            async for chunk in generate_doc_stream(
+            gen = generate_mindmap_stream if rtype == "mindmap" else generate_doc_stream
+            async for chunk in gen(
                 chapter_title=title, chapter_content=chapter_content,
                 chapter_id=cid, profile=profile_dict,
                 user_query=data.user_query if not chapter else None,
@@ -148,7 +184,7 @@ async def generate_stream(
                         r2 = ResourceRepository(s2)
                         await r2.update(created.id, content=full_text, status="completed")
                         await s2.commit()
-                    yield f"data: {json.dumps({'done': True, 'id': created.id, 'title': title}, ensure_ascii=False)}\n\n"
+                    yield f"data: {json.dumps({'done': True, 'id': created.id, 'title': title, 'resource_type': rtype}, ensure_ascii=False)}\n\n"
                 else:
                     full_text += chunk.get("text", "")
                     yield f"data: {json.dumps({'done': False, 'text': chunk.get('text', '')}, ensure_ascii=False)}\n\n"
@@ -252,6 +288,36 @@ async def get_session_detail(
     }
 
 
+
+# ==================== GRADE ====================
+
+class GradeIn(BaseModel):
+    score: int
+    total: int
+    answers: list = []
+
+@router.patch("/{resource_id}/grade")
+async def grade_resource(
+    resource_id: int,
+    data: GradeIn,
+    user_id: int = Depends(auth_handler.auth_access_dependency),
+    db: AsyncSession = Depends(get_db),
+):
+    repo = ResourceRepository(db)
+    r = await repo.get_by_id(resource_id)
+    if not r or r.user_id != user_id:
+        raise HTTPException(404, detail="资源不存在")
+    attempts = (r.extra_data or {}).get("attempts", [])
+    attempts.append({
+        "score": data.score,
+        "total": data.total,
+        "answers": data.answers,
+        "time": datetime.datetime.now().isoformat(),
+    })
+    await repo.update(resource_id, extra_data={**(r.extra_data or {}), "attempts": attempts})
+    await db.commit()
+    return {"message": "评分已保存", "attempts": attempts}
+
 # ==================== LIST ====================
 
 @router.get("/")
@@ -265,7 +331,7 @@ async def get_resources(
     return [ResourceOut(
         id=r.id, user_id=r.user_id, chapter_id=r.chapter_id,
         resource_type=r.resource_type, title=r.title, content=r.content,
-        extra_data=r.extra_data, status=r.status,
+        extra_data=r.extra_data, status=(r.status or "").lower(),
         created_time=r.created_time.isoformat() if r.created_time else ""
     ).model_dump() for r in resources]
 
@@ -300,6 +366,6 @@ async def get_resource(
     return ResourceOut(
         id=r.id, user_id=r.user_id, chapter_id=r.chapter_id,
         resource_type=r.resource_type, title=r.title, content=r.content,
-        extra_data=r.extra_data, status=r.status,
+        extra_data=r.extra_data, status=(r.status or "").lower(),
         created_time=r.created_time.isoformat() if r.created_time else ""
     ).model_dump()

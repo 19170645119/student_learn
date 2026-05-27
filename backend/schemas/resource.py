@@ -14,6 +14,7 @@ class ResourceGenerateIn(BaseModel):
     chapter_id: int
     resource_types: List[str]
     user_query: Optional[str] = None
+    extra: Optional[dict] = None
 
     @field_validator("resource_types")
     @classmethod

@@ -1,46 +1,34 @@
 <template>
-  <div class="page">
-    <header class="topbar">
-      <button class="back" @click="$router.push('/home')">← 返回</button>
-      <h1>学习画像</h1>
-      <button class="new-btn" @click="newSession">+ 新对话</button>
-    </header>
-
+  <div class="profile">
+    <nav class="topnav glass-panel">
+      <button class="nav-back" @click="goHome">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m15 18-6-6 6-6"/></svg>
+      </button>
+      <h1 class="gradient-text">学习画像</h1>
+      <button class="btn-new-session" @click="newSession">+ 新对话</button>
+    </nav>
     <div class="layout">
-      <div class="sidebar">
+      <div class="sidebar glass-panel">
         <div class="sidebar-title">历史对话</div>
         <div class="session-list">
-          <div
-            v-for="s in sessions"
-            :key="s.id"
-            :class="['session-item', { active: s.id === activeId }]"
-            @click="switchTo(s.id)"
-          >
-            <span
-              v-if="editingId !== s.id"
-              class="session-title"
-              @dblclick.stop="startRename(s)"
-            >{{ s.title || '未命名对话' }}</span>
-            <input
-              v-else
-              v-model="editTitle"
-              class="rename-input"
-              @keydown.enter.prevent="saveRename(s)"
-              @blur="saveRename(s)"
-              @click.stop
-              ref="renameInput"
-            />
+          <div v-for="s in sessions" :key="s.id" :class="['session-item', { active: s.id === activeId }]" @click="switchTo(s.id)">
+            <span v-if="editingId !== s.id" class="session-title" @dblclick.stop="startRename(s)">{{ s.title || '未命名对话' }}</span>
+            <input v-else v-model="editTitle" class="rename-input" @keydown.enter.prevent="saveRename(s)" @blur="saveRename(s)" @click.stop />
             <span v-if="streamingSids.has(s.id)" class="dot">●</span>
             <span class="session-time">{{ formatTime(s.updated_time) }}</span>
-            <button class="del-btn" @click.stop="delSession(s.id)">×</button>
+            <button class="del-btn" @click.stop="delSession(s.id)">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/></svg>
+            </button>
           </div>
           <div v-if="sessions.length === 0" class="empty-session">暂无历史对话</div>
         </div>
       </div>
-
-      <div class="chat-area">
-        <div class="profile-card">
-          <h3>📊 我的学习画像</h3>
+      <div class="chat-area-wrap">
+        <div class="profile-card glass-panel-glow">
+          <h3>
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="8" r="5"/><path d="M3 21v-2a7 7 0 017-7h4a7 7 0 017 7v2"/></svg>
+            我的学习画像
+          </h3>
           <div class="dims">
             <div class="dim" v-for="d in dims" :key="d.key">
               <span class="dl">{{ d.label }}</span>
@@ -48,19 +36,16 @@
             </div>
           </div>
         </div>
-
-        <div class="chat-box">
+        <div class="chat-box glass-panel">
           <div class="messages" ref="msgBox">
-            <div v-for="(m, i) in messages" :key="i" :class="'msg ' + m.role">
-              {{ m.content }}
-            </div>
-            <div v-if="activeStreamText" class="msg ai">
-              {{ activeStreamText }}<span class="cursor">|</span>
-            </div>
+            <div v-for="(m, i) in messages" :key="i" :class="'msg ' + m.role">{{ m.content }}</div>
+            <div v-if="activeStreamText" class="msg ai">{{ activeStreamText }}<span class="cursor">|</span></div>
           </div>
           <div class="input-row">
             <input v-model="input" placeholder="说说你的学习情况..." @keyup.enter="send" :disabled="streamingSids.has(activeId)" />
-            <button @click="send" :disabled="streamingSids.has(activeId) || !input">发送</button>
+            <button class="btn-send" @click="send" :disabled="streamingSids.has(activeId) || !input">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+            </button>
           </div>
         </div>
       </div>
@@ -70,9 +55,13 @@
 
 <script setup>
 import { ref, reactive, onMounted, nextTick } from 'vue'
+import { useRouter } from 'vue-router'
 import { getProfile } from '../http/http.js'
 
+const router = useRouter()
 const BASE_URL = 'http://127.0.0.1:8000'
+
+function goHome() { router.push('/home') }
 const dims = [
   { key: 'knowledge_base', label: '知识基础' },
   { key: 'cognitive_style', label: '认知风格' },
@@ -291,45 +280,47 @@ function formatTime(t) {
 </script>
 
 <style scoped>
-.page { max-width: 1000px; margin: 0 auto; }
-.topbar { display: flex; align-items: center; gap: 16px; padding: 12px 16px; }
-.back { background: none; border: none; font-size: 16px; cursor: pointer; color: #4A90D9; }
-h1 { font-size: 20px; flex: 1; }
-.new-btn { padding: 6px 14px; background: #4A90D9; color: #fff; border: none; border-radius: 6px; font-size: 13px; cursor: pointer; }
-.layout { display: flex; gap: 16px; padding: 0 16px; height: calc(100vh - 56px); }
-.sidebar { width: 200px; flex-shrink: 0; background: #fff; border-radius: 12px; padding: 12px; box-shadow: var(--shadow); display: flex; flex-direction: column; }
-.sidebar-title { font-size: 14px; font-weight: bold; color: #303133; margin-bottom: 10px; }
+.profile { height: 100vh; display: flex; flex-direction: column; overflow: hidden; }
+.topnav { display: flex; align-items: center; padding: 10px 20px; margin: 10px 16px 0; border-radius: 18px; flex-shrink: 0; z-index: 10; }
+.nav-back { display: flex; align-items: center; justify-content: center; width: 36px; height: 36px; border-radius: 10px; background: rgba(255,255,255,0.04); color: var(--text-regular); transition: all var(--transition); }
+.nav-back:hover { background: rgba(255,255,255,0.08); color: var(--text-primary); }
+.topnav h1 { font-size: 1.1rem; font-weight: 700; margin-left: 14px; flex: 1; }
+.btn-new-session { padding: 8px 18px; background: var(--gradient-brand); color: #fff; border: none; border-radius: 10px; font-size: 0.8rem; font-weight: 600; }
+.btn-new-session:hover { box-shadow: var(--shadow-glow); transform: translateY(-1px); }
+.layout { display: flex; gap: 12px; padding: 12px 16px 16px; flex: 1; min-height: 0; overflow: hidden; }
+.sidebar { width: 200px; flex-shrink: 0; border-radius: var(--radius); padding: 14px; display: flex; flex-direction: column; }
+.sidebar-title { font-size: 0.82rem; font-weight: 600; color: var(--text-primary); margin-bottom: 10px; }
 .session-list { flex: 1; overflow-y: auto; }
-.session-item { padding: 10px 8px; border-radius: 8px; cursor: pointer; margin-bottom: 4px; position: relative; }
-.session-item:hover { background: #f0f2f5; }
-.session-item.active { background: #e6f0fa; }
-.session-title { font-size: 13px; color: #303133; display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; cursor: default; }
-.rename-input { font-size: 13px; width: 100%; padding: 2px 4px; border: 1px solid #4A90D9; border-radius: 4px; outline: none; box-sizing: border-box; }
-.dot { color: #4A90D9; font-size: 10px; margin-left: 4px; animation: blink 0.8s infinite; }
+.session-item { padding: 10px 8px; border-radius: 8px; cursor: pointer; margin-bottom: 4px; position: relative; transition: all var(--transition); }
+.session-item:hover { background: rgba(255,255,255,0.04); }
+.session-item.active { background: var(--primary-bg); border: 1px solid rgba(91,127,255,0.1); }
+.session-title { font-size: 0.8rem; color: var(--text-primary); display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; cursor: default; }
+.rename-input { font-size: 0.78rem; width: 100%; padding: 2px 4px; border: 1px solid var(--primary); border-radius: 4px; outline: none; box-sizing: border-box; }
+.dot { color: var(--primary-light); font-size: 10px; margin-left: 4px; animation: blink 0.8s infinite; }
 @keyframes blink { 50% { opacity: 0; } }
-.session-time { font-size: 11px; color: #c0c4cc; display: block; }
-.edit-btn { position: absolute; right: 30px; top: 4px; background: none; border: none; color: #ccc; font-size: 14px; cursor: pointer; display: none; }
-.edit-btn:hover { color: #4A90D9; }
-.del-btn { position: absolute; right: 6px; top: 6px; background: none; border: none; color: #ccc; font-size: 16px; cursor: pointer; display: none; }
-.session-item:hover .del-btn { display: block; }
-.session-item:hover .edit-btn { display: block; }
-.del-btn:hover { color: #f56c6c; }
-.empty-session { text-align: center; color: #c0c4cc; font-size: 13px; padding: 20px 0; }
-.chat-area { flex: 1; display: flex; flex-direction: column; gap: 12px; min-width: 0; }
-.profile-card { background: #fff; padding: 16px; border-radius: 12px; box-shadow: var(--shadow); }
-.profile-card h3 { font-size: 16px; margin-bottom: 10px; }
+.session-time { font-size: 0.7rem; color: var(--text-secondary); display: block; }
+.del-btn { position: absolute; right: 6px; top: 8px; width: 22px; height: 22px; display: none; align-items: center; justify-content: center; background: transparent; color: var(--text-disabled); border-radius: 4px; }
+.session-item:hover .del-btn { display: flex; }
+.del-btn:hover { color: var(--danger); background: var(--danger-bg); }
+.empty-session { text-align: center; color: var(--text-secondary); font-size: 0.8rem; padding: 20px 0; }
+.chat-area-wrap { flex: 1; display: flex; flex-direction: column; gap: 10px; min-width: 0; }
+.profile-card { padding: 16px 20px; border-radius: var(--radius); }
+.profile-card h3 { font-size: 0.95rem; margin-bottom: 12px; display: flex; align-items: center; gap: 8px; }
 .dims { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; }
-.dim { background: #f5f7fa; border-radius: 8px; padding: 8px 12px; }
-.dl { font-size: 11px; color: #909399; display: block; }
-.dv { font-size: 13px; color: #303133; display: block; margin-top: 1px; }
-.chat-box { background: #fff; border-radius: 12px; overflow: hidden; box-shadow: var(--shadow); display: flex; flex-direction: column; flex: 1; }
+.dim { background: rgba(255,255,255,0.03); border-radius: 8px; padding: 10px 14px; border: 1px solid var(--border-light); }
+.dl { font-size: 0.7rem; color: var(--text-secondary); display: block; }
+.dv { font-size: 0.82rem; color: var(--text-primary); display: block; margin-top: 2px; }
+.chat-box { flex: 1; border-radius: var(--radius); display: flex; flex-direction: column; overflow: hidden; }
 .messages { flex: 1; overflow-y: auto; padding: 16px; }
-.msg { max-width: 75%; padding: 10px 16px; border-radius: 12px; margin-bottom: 12px; font-size: 14px; line-height: 1.5; white-space: pre-wrap; }
-.msg.user { background: #4A90D9; color: #fff; margin-left: auto; }
-.msg.ai { background: #f0f2f5; color: #303133; }
-.cursor { animation: blink 0.8s infinite; }
-.input-row { display: flex; gap: 10px; padding: 12px 16px; border-top: 1px solid #f0f0f0; }
-.input-row input { flex: 1; height: 40px; border: 1px solid #e8e8e8; border-radius: 20px; padding: 0 16px; font-size: 14px; outline: none; }
-.input-row button { height: 40px; padding: 0 20px; background: #4A90D9; color: #fff; border: none; border-radius: 20px; font-size: 14px; cursor: pointer; }
-.input-row button:disabled { opacity: 0.5; cursor: not-allowed; }
+.msg { max-width: 75%; padding: 10px 16px; border-radius: 14px; margin-bottom: 12px; font-size: 0.85rem; line-height: 1.55; white-space: pre-wrap; }
+.msg.user { background: var(--gradient-brand); color: #fff; margin-left: auto; }
+.msg.ai { background: rgba(255,255,255,0.04); color: var(--text-primary); }
+.cursor { animation: blink 0.8s infinite; color: var(--primary-light); font-weight: 300; }
+.input-row { display: flex; gap: 8px; padding: 12px 16px; border-top: 1px solid var(--border-light); }
+.input-row input { flex: 1; height: 40px; background: rgba(10,16,40,0.5); border: 1px solid var(--border); border-radius: 20px; padding: 0 16px; font-size: 0.85rem; color: var(--text-primary); outline: none; }
+.input-row input:focus { border-color: var(--primary); box-shadow: 0 0 0 3px var(--primary-glow); }
+.input-row input::placeholder { color: var(--text-disabled); }
+.btn-send { width: 40px; height: 40px; display: flex; align-items: center; justify-content: center; background: var(--gradient-brand); color: #fff; border-radius: 50%; flex-shrink: 0; }
+.btn-send:hover { box-shadow: var(--shadow-glow); transform: scale(1.05); }
+.btn-send:disabled { opacity: 0.3; cursor: not-allowed; }
 </style>

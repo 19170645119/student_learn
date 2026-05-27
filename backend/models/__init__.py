@@ -32,4 +32,4 @@ class Base(DeclarativeBase):
         "pk": "pk_%(table_name)s"
     })
 
-from . import user, profile, resource, learning_path, conversation
+from . import user, profile, resource, learning_path, conversation, question_bank

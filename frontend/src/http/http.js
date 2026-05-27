@@ -33,7 +33,7 @@ export const updateProfile = (data) => put('/profile/', data)
 export const chatProfile = (message) => post('/profile/chat', { message })
 
 // Resources
-export const getDocs = () => get('/resource/', { resource_type: 'doc' })
+export const getDocs = () => get('/resource/')
 export const getChapters = () => get('/resource/chapters/list')
 export const generateDoc = (chapterId, userQuery = null) => {
   const body = { chapter_id: chapterId, resource_types: ['doc'] }
@@ -75,9 +75,9 @@ export const resourceChat = async (message, sessionId = null) => {
   return res.json()
 }
 
-export const generateDocStream = async (chapterId, userQuery, onChunk, onDone, onError) => {
+export const generateDocStream = async (chapterId, userQuery, onChunk, onDone, onError, resourceTypes = ['doc']) => {
   const token = localStorage.getItem('token')
-  const body = { chapter_id: chapterId, resource_types: ['doc'] }
+  const body = { chapter_id: chapterId, resource_types: resourceTypes }
   if (userQuery) body.user_query = userQuery
 
   try {
@@ -118,8 +118,22 @@ export const generateDocStream = async (chapterId, userQuery, onChunk, onDone, o
   }
 }
 
+// Quiz
+export const generateQuiz = (chapterId, userQuery = null, difficulty = "medium", count = 5, questionType = null) => {
+  const body = { chapter_id: chapterId, resource_types: ["quiz"] }
+  if (userQuery) body.user_query = userQuery
+  body.extra = { difficulty, count }
+  if (questionType) body.extra.question_type = questionType
+  return post("/resource/generate", body)
+}
+export const gradeQuiz = (resourceId, score, total, answers = []) =>
+  request("/resource/" + resourceId + "/grade", {
+    method: "PATCH",
+    body: JSON.stringify({ score, total, answers }),
+  })
+
 // Resource Docs
-export const deleteDoc = (id) => del('/resource/' + id)
+export const deleteDoc = (id) => del("/resource/" + id)
 
 // Resource Sessions
 export const getResourceSessions = () => get('/resource/sessions')
