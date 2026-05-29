@@ -12,6 +12,8 @@ class ProfileDimension(BaseModel):
     error_prone: str = ""
     learning_pace: str = ""
     interest_direction: str = ""
+    major_grade: str = ""
+    weekly_hours: str = ""
 
 class ProfileOut(BaseModel):
     id: int
@@ -22,6 +24,8 @@ class ProfileOut(BaseModel):
     error_prone: str
     learning_pace: str
     interest_direction: str
+    major_grade: str
+    weekly_hours: str
     extra_dimensions: dict = {}
 
     class Config:
@@ -34,3 +38,5 @@ class ProfileUpdateIn(BaseModel):
     error_prone: Optional[str] = None
     learning_pace: Optional[str] = None
     interest_direction: Optional[str] = None
+    major_grade: Optional[str] = None
+    weekly_hours: Optional[str] = None

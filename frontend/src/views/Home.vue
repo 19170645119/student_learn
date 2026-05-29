@@ -24,7 +24,7 @@
           </router-link>
         </div>
         <div class="nav-actions">
-          <button class="btn-logout" @click="exitLogin">退出</button>
+          <button class="btn-logout" @click="logout">退出</button>
         </div>
       </div>
     </nav>
@@ -67,6 +67,32 @@
           <span class="stat-value">∞</span>
           <span class="stat-label">个性化路径</span>
         </div>
+      </div>
+    </section>
+
+    <!-- Profile Welcome -->
+    <section v-if="profile" class="profile-welcome glass-panel">
+      <div class="pw-content">
+        <span class="pw-greeting">👋 你好！</span>
+        <span class="pw-text">
+          根据你的画像，你擅长<strong>{{ profile.knowledge_base || '...' }}</strong>，
+          偏好<strong>{{ profile.cognitive_style || '...' }}</strong>学习，
+          对<strong>{{ profile.interest_direction || '...' }}</strong>感兴趣。
+        </span>
+        <div v-if="profile.error_prone" class="pw-advice">
+          💡 建议：你的<strong>{{ profile.error_prone }}</strong>较薄弱，可以去补强一下
+        </div>
+        <div class="pw-actions">
+          <router-link to="/resources" class="btn-primary btn-sm">去生成学习资源 →</router-link>
+          <router-link to="/learning-path" class="btn-ghost btn-sm">查看学习路径 →</router-link>
+        </div>
+      </div>
+    </section>
+    <section v-else class="profile-welcome glass-panel">
+      <div class="pw-content pw-empty">
+        <span class="pw-greeting">🎯 还没构建学习画像？</span>
+        <span class="pw-text">花 2 分钟和 AI 聊聊，让它了解你的学习风格和目标</span>
+        <router-link to="/profile" class="btn-primary btn-sm">构建学习画像 →</router-link>
       </div>
     </section>
 
@@ -123,12 +149,18 @@
 <script setup>
 import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
+import { getProfile } from '../http/http.js'
+
 const router = useRouter()
 const username = ref('')
-onMounted(() => {
+const profile = ref(null)
+
+onMounted(async () => {
   const u = JSON.parse(localStorage.getItem('user') || '{}')
   username.value = u.username || '同学'
+  try { profile.value = await getProfile() } catch (e) { console.error('Profile load failed:', e) }
 })
+
 function logout() {
   localStorage.removeItem('token')
   localStorage.removeItem('user')
@@ -182,6 +214,17 @@ function logout() {
 .card-icon-wrap { width: 52px; height: 52px; display: flex; align-items: center; justify-content: center; border-radius: 14px; background: var(--primary-bg); border: 1px solid rgba(91,127,255,0.12); margin-bottom: 20px; position: relative; z-index: 1; }
 .module-card h3 { font-size: 18px; margin-bottom: 10px; position: relative; z-index: 1; }
 .module-card p { font-size: 14px; color: var(--text-secondary); line-height: 1.6; position: relative; z-index: 1; }
+/* Profile Welcome */
+.profile-welcome { max-width: 1100px; margin: 0 auto 20px; padding: 20px 24px; border-radius: 16px; }
+.pw-content { display: flex; flex-direction: column; gap: 8px; }
+.pw-greeting { font-size: 1.05rem; font-weight: 700; }
+.pw-text { font-size: 0.9rem; color: var(--text-secondary); line-height: 1.6; }
+.pw-text strong { color: var(--text-primary); }
+.pw-advice { font-size: 0.85rem; color: #facc15; background: rgba(250,204,21,0.08); padding: 6px 12px; border-radius: 8px; }
+.pw-actions { display: flex; gap: 10px; margin-top: 4px; }
+.pw-empty { text-align: center; align-items: center; }
+.btn-sm { padding: 8px 18px; font-size: 0.82rem; border-radius: 10px; display: inline-flex; align-items: center; gap: 6px; text-decoration: none; font-weight: 600; }
+
 .footer { text-align: center; padding: 32px 20px; color: var(--text-disabled); font-size: 13px; position: relative; z-index: 1; }
 .footer p { margin: 0; }
 @media (max-width: 768px) {

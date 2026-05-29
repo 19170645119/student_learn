@@ -1,4 +1,5 @@
 import traceback, json, datetime
+import io
 from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel
 from fastapi.responses import StreamingResponse
@@ -13,6 +14,12 @@ from core.agents.doc_agent import generate_doc, generate_doc_stream
 from core.agents.mindmap_agent import generate_mindmap, generate_mindmap_stream
 from core.agents.quiz_agent import generate_quiz
 from core.agents.resource_chat_agent import resource_chat
+from core.agents.video_agent import generate_video_script, generate_video_script_stream
+from core.agents.video_link_agent import generate_video_links, generate_video_links_stream
+from core.agents.ppt_agent import generate_ppt, generate_ppt_stream
+from core.ppt_export import export_pptx
+from core.agents.code_agent import generate_code, generate_code_stream
+from core.openai_service import chat as llm_chat
 from core.auth import AuthHandler
 from schemas.resource import ResourceChatIn, ResourceGenerateIn, ResourceOut, ResourceSessionCreateIn, ResourceSessionRenameIn
 
@@ -126,6 +133,33 @@ async def generate_resources(
             return {"id": r.id, "title": r.title, "content": content, "resource_type": rtype,
                     "status": "completed", "extra_data": r.extra_data,
                     "created_time": r.created_time.isoformat() if r.created_time else ""}
+        elif rtype == "video":
+            content = await generate_video_script(
+                chapter_title=title, chapter_content=chapter_content,
+                chapter_id=cid, profile=profile_dict,
+                user_query=data.user_query if not chapter else None,
+                with_audio=True,
+            )
+        elif rtype == "ppt":
+            content = await generate_ppt(
+                chapter_title=title, chapter_content=chapter_content,
+                chapter_id=cid, profile=profile_dict,
+                user_query=data.user_query if not chapter else None,
+                extra=extra,
+            )
+        elif rtype == "code":
+            content = await generate_code(
+                chapter_title=title, chapter_content=chapter_content,
+                chapter_id=cid, profile=profile_dict,
+                user_query=data.user_query if not chapter else None,
+                extra=extra,
+            )
+        elif rtype == "video_link":
+            content = await generate_video_links(
+                chapter_title=title, chapter_content=chapter_content,
+                chapter_id=cid, profile=profile_dict,
+                user_query=data.user_query if not chapter else None,
+            )
         else:
             content = await generate_doc(
                 chapter_title=title, chapter_content=chapter_content,
@@ -173,18 +207,22 @@ async def generate_stream(
     async def event_stream():
         full_text = ""
         try:
-            gen = generate_mindmap_stream if rtype == "mindmap" else generate_doc_stream
+            gen = generate_mindmap_stream if rtype == "mindmap" else (
+                generate_ppt_stream if rtype == "ppt" else (
+                generate_video_script_stream if rtype == "video" else generate_doc_stream
+            ))
             async for chunk in gen(
                 chapter_title=title, chapter_content=chapter_content,
                 chapter_id=cid, profile=profile_dict,
                 user_query=data.user_query if not chapter else None,
             ):
                 if chunk.get("done"):
+                    final_content = chunk.get("full_text", full_text)
                     async with AsyncSessionFactory() as s2:
                         r2 = ResourceRepository(s2)
-                        await r2.update(created.id, content=full_text, status="completed")
+                        await r2.update(created.id, content=final_content, status="completed")
                         await s2.commit()
-                    yield f"data: {json.dumps({'done': True, 'id': created.id, 'title': title, 'resource_type': rtype}, ensure_ascii=False)}\n\n"
+                    yield f"data: {json.dumps({'done': True, 'id': created.id, 'title': title, 'resource_type': rtype, 'full_text': final_content}, ensure_ascii=False)}\n\n"
                 else:
                     full_text += chunk.get("text", "")
                     yield f"data: {json.dumps({'done': False, 'text': chunk.get('text', '')}, ensure_ascii=False)}\n\n"
@@ -296,6 +334,7 @@ class GradeIn(BaseModel):
     total: int
     answers: list = []
 
+
 @router.patch("/{resource_id}/grade")
 async def grade_resource(
     resource_id: int,
@@ -336,6 +375,81 @@ async def get_resources(
     ).model_dump() for r in resources]
 
 
+
+
+# ==================== CODE REVIEW ====================
+
+class CodeReviewIn(BaseModel):
+    code: str
+    language: str = "python"
+
+@router.post("/{resource_id}/review-code")
+async def review_code(
+    resource_id: int,
+    data: CodeReviewIn,
+    user_id: int = Depends(auth_handler.auth_access_dependency),
+    db: AsyncSession = Depends(get_db),
+):
+    repo = ResourceRepository(db)
+    r = await repo.get_by_id(resource_id)
+    if not r or r.user_id != user_id:
+        raise HTTPException(404, detail="?????")
+    if r.resource_type != "code":
+        raise HTTPException(400, detail="???????")
+
+    try:
+        sol_data = json.loads(r.content) if isinstance(r.content, str) else r.content
+    except:
+        sol_data = {}
+
+    solution_code = sol_data.get("solution", {}).get("code", "")
+    test_cases = sol_data.get("examples", [])
+    problem_stmt = sol_data.get("problem", {}).get("statement", "")
+    language = data.language or sol_data.get("language", "python")
+
+    review_prompt = f"""?????????????????
+
+????
+{problem_stmt}
+
+??????
+{solution_code[:2000]}
+
+??????
+{json.dumps(test_cases, ensure_ascii=False)[:1000]}
+
+??????
+{data.code}
+
+?????????????JSON?
+{{
+  "correct": true/false,
+  "score": 0-100,
+  "feedback": "?????1-2???",
+  "issues": [{{"line": "?????", "severity": "error/warning/suggestion", "message": "????", "fix": "????"}}],
+  "highlights": ["??????1", "??????2"],
+  "comparison": "??????????",
+  "improved_code": "?????????????????"
+}}
+
+???JSON????????"""
+
+    try:
+        response = await llm_chat([
+            {"role": "system", "content": "???????????????????????????JSON?"},
+            {"role": "user", "content": review_prompt},
+        ])
+        import re as _re
+        json_match = _re.search(r"\{.*\}", response, _re.DOTALL)
+        if json_match:
+            review = json.loads(json_match.group())
+        else:
+            review = {"correct": False, "score": 0, "feedback": response[:500], "issues": [], "highlights": [], "comparison": "", "improved_code": ""}
+        return {"review": review}
+    except Exception as e:
+        return {"review": {"correct": False, "score": 0, "feedback": "????: " + str(e), "issues": [], "highlights": [], "comparison": "", "improved_code": ""}}
+
+
 # ==================== RESOURCE DETAIL (LAST) ====================
 
 @router.delete("/{resource_id}")
@@ -369,3 +483,27 @@ async def get_resource(
         extra_data=r.extra_data, status=(r.status or "").lower(),
         created_time=r.created_time.isoformat() if r.created_time else ""
     ).model_dump()
+
+
+@router.get("/{resource_id}/export/pptx")
+async def export_resource_pptx(
+    resource_id: int,
+    user_id: int = Depends(auth_handler.auth_access_dependency),
+    db: AsyncSession = Depends(get_db),
+):
+    """导出资源为PPTX文件"""
+    repo = ResourceRepository(db)
+    resource = await repo.get_by_id(resource_id)
+    if not resource or resource.user_id != user_id:
+        raise HTTPException(404, detail="资源不存在")
+    if not resource.content:
+        raise HTTPException(400, detail="资源内容为空")
+    try:
+        pptx_bytes = export_pptx(resource.content)
+    except Exception as e:
+        raise HTTPException(500, detail=f"PPTX生成失败: {str(e)}")
+    return StreamingResponse(
+        io.BytesIO(pptx_bytes),
+        media_type="application/vnd.openxmlformats-officedocument.presentationml.presentation",
+        headers={"Content-Disposition": f"attachment; filename=ppt_{resource_id}.pptx"}
+    )

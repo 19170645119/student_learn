@@ -28,3 +28,4 @@ MAIL_SERVER = os.getenv("MAIL_SERVER", "smtp.qq.com")
 MAIL_FROM_NAME = os.getenv("MAIL_FROM_NAME", "???????")
 MAIL_STARTTLS = os.getenv("MAIL_STARTTLS", "True").lower() == "true"
 MAIL_SSL_TLS = os.getenv("MAIL_SSL_TLS", "False").lower() == "true"
+# ========== ??????? ==========

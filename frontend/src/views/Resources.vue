@@ -68,7 +68,7 @@
                     <span v-else>为你生成《{{ m.user_query }}》的学习文档</span>
                   </div>
                   <button class="btn-gen" :disabled="m.generating" @click="doGenerate(m)">
-                    {{ m.generating ? '生成中...' : (m.resource_type === 'mindmap' ? '生成思维导图' : m.resource_type === 'quiz' ? '生成练习题' : '生成文档') }}
+                    {{ m.generating ? '生成中...' : (m.resource_type === 'mindmap' ? '生成思维导图' : m.resource_type === 'mindmap' ? '生成思维导图' : m.resource_type === 'quiz' ? '生成练习题' : m.resource_type === 'video' ? '生成教学动画' : m.resource_type === 'code' ? '生成代码案例' : m.resource_type === 'ppt' ? '生成PPT课件' : m.resource_type === 'video_link' ? '推荐B站视频' : '生成文档') }}
                   </button>
                 </div>
               </template>
@@ -89,7 +89,69 @@
             <button :class="{ active: previewTab === 'current' }" @click="previewTab = 'current'">课程文档</button>
             <button :class="{ active: previewTab === 'mindmap' }" @click="previewTab = 'mindmap'">思维导图</button>
             <button :class="{ active: previewTab === 'quiz' }" @click="switchToQuizTab()">练习题</button>
+            <button :class="{ active: previewTab === 'video' }" @click="previewTab = 'video'">教学动画</button>
+            <button :class="{ active: previewTab === 'code' }" @click="previewTab = 'code'">💻 代码实操</button>
+            <button :class="{ active: previewTab === 'video_link' }" @click="previewTab = 'video_link'">🎬 视频推荐</button>
+            <button :class="{ active: previewTab === 'ppt' }" @click="previewTab = 'ppt'">📊 PPT课件</button>
             <button :class="{ active: previewTab === 'history' }" @click="previewTab = 'history'">历史文档</button>
+          </div>
+
+          <!-- 教学动画 Tab -->
+          <div class="preview-body" v-if="previewTab === 'video'">
+            <VideoPlayer v-if="currentDoc && currentDoc.resource_type === 'video' && videoScript"
+              :script="videoScript"
+            />
+            <div v-else class="preview-empty">
+              <div class="pe-icon">🎬</div>
+              <div class="pe-text">在对话中说「帮我做个教学动画」来生成</div>
+            </div>
+          </div>
+          <!-- 代码实操 Tab -->
+          <div class="preview-body" v-if="previewTab === 'code'">
+            <CodeViewer v-if="currentDoc && currentDoc.resource_type === 'code'"
+              :content="currentDoc?.content || ''"
+              :resourceId="currentDoc?.id"
+            />
+            <div v-else class="preview-empty">
+              <div class="pe-icon">💻</div>
+              <div class="pe-text">在对话中说「用Python写快速排序」来生成代码案例</div>
+            </div>
+          </div>
+          <!-- 视频推荐 Tab -->
+          <div class="preview-body" v-if="previewTab === 'video_link'">
+            <div v-if="currentDoc && currentDoc.resource_type === 'video_link' && vlVideos.length" class="vl-list">
+              <div class="vl-header">
+                <span class="vl-keyword">搜索关键词：{{ vlKeyword }}</span>
+                <span class="vl-source">来源：B站</span>
+              </div>
+              <div v-for="(v, idx) in vlVideos" :key="idx" class="vl-card" @click="window.open(v.url, '_blank')">
+                <div class="vl-rank">{{ idx + 1 }}</div>
+                <div class="vl-info">
+                  <div class="vl-title">{{ v.title }}</div>
+                  <div class="vl-meta">
+                    <span class="vl-author">{{ v.author }}</span>
+                    <span class="vl-play">▶ {{ v.play }}</span>
+                    <span class="vl-duration">{{ v.duration }}</span>
+                  </div>
+                </div>
+                <svg class="vl-arrow" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M7 17l9.2-9.2M17 17V7H7"/></svg>
+              </div>
+            </div>
+            <div v-else class="preview-empty">
+              <div class="pe-icon">🎬</div>
+              <div class="pe-text">在对话中说「帮我找深度学习的视频」来获取B站推荐</div>
+            </div>
+          </div>
+          <!-- PPT课件 Tab -->
+          <div class="preview-body" v-if="previewTab === 'ppt'">
+            <PptViewer v-if="currentDoc && (currentDoc.resource_type === 'ppt' || previewTab === 'ppt')"
+              :content="currentDoc?.content || ''"
+              :resourceId="currentDoc?.id"
+            />
+            <div v-else class="preview-empty">
+              <div class="pe-icon">📊</div>
+              <div class="pe-text">在对话中说「帮我做个PPT」来生成课件</div>
+            </div>
           </div>
           <div class="preview-body" v-if="previewTab === 'current'">
             <div v-if="currentDoc && (currentDoc.resource_type === 'mindmap' || (currentDoc.content && currentDoc.content.trimStart().startsWith('mindmap')))" class="preview-empty">
@@ -103,6 +165,21 @@
               <button class="btn-primary" style="margin-top:12px" @click="switchToQuizTab()">查看练习题</button>
             </div>
             <div v-else-if="streamingText" class="doc-content" v-html="renderMarkdown(streamingText)"></div>
+            <div v-if="currentDoc && (currentDoc.resource_type === 'mindmap' || (currentDoc.content && currentDoc.content.trimStart().startsWith('mindmap')))" class="preview-empty">
+              <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1" opacity="0.3"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>
+              <p>这是思维导图，请切换到「思维导图」Tab 查看</p>
+              <button class="btn-primary" style="margin-top:12px" @click="previewTab = 'mindmap'">查看思维导图</button>
+            </div>
+            <div v-else-if="currentDoc && currentDoc.resource_type === 'video'" class="preview-empty">
+              <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1" opacity="0.3"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+              <p>这是教学动画，请切换到「教学动画」Tab 查看</p>
+              <button class="btn-primary" style="margin-top:12px" @click="previewTab = 'video'">查看教学动画</button>
+            </div>
+            <div v-else-if="currentDoc && currentDoc.resource_type === 'video_link'" class="preview-empty">
+              <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1" opacity="0.3"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8"/><path d="M12 17v4"/></svg>
+              <p>这是视频推荐，请切换到「视频推荐」Tab 查看</p>
+              <button class="btn-primary" style="margin-top:12px" @click="previewTab = 'video_link'">查看视频推荐</button>
+            </div>
             <div v-else-if="currentDoc" class="doc-content" v-html="renderMarkdown(currentDoc.content)"></div>
             <div v-else class="preview-empty">
               <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1" opacity="0.3"><path d="M4 19.5v-15A2.5 2.5 0 0 1 6.5 2H20v20H6.5a2.5 2.5 0 0 1 0-5H20"/></svg>
@@ -196,7 +273,7 @@
               </div>
             </div>
           </div>
-                    <div class="preview-body" v-else>
+          <div class="preview-body" v-if="previewTab === 'history'">
             <div v-if="docs.length > 0" class="history-toolbar">
               <button class="batch-toggle" :class="{ active: batchMode }" @click="toggleBatchMode">
                 {{ batchMode ? '取消' : '批量管理' }}
@@ -223,12 +300,18 @@
                   <span class="h-title">{{ doc.title }}</span>
                   <span v-if="doc.resource_type === 'mindmap' || (doc.content && doc.content.trimStart().startsWith('mindmap'))" class="h-badge mindmap">思维导图</span>
                   <span v-else-if="doc.resource_type === 'quiz'" class="h-badge quiz">练习题</span>
+                  <span v-if="doc.resource_type === 'video'" class="h-badge video">教学动画</span>
+                  <span v-else-if="doc.resource_type === 'video_link'" class="h-badge video-link">🎬 视频推荐</span>
+                  <span v-else-if="doc.resource_type === 'mindmap' || (doc.content && doc.content.trimStart().startsWith('mindmap'))" class="h-badge mindmap">思维导图</span>
+                  <span v-else-if="doc.resource_type === 'quiz'" class="h-badge quiz">练习题</span>
+                  <span v-else-if="doc.resource_type === 'code'" class="h-badge code-badge">💻 代码实操</span>
+                  <span v-else-if="doc.resource_type === 'ppt'" class="h-badge ppt-badge">📊 PPT课件</span>
                   <span v-else class="h-badge doc">课程文档</span>
                 </div>
                 <span class="h-time">{{ formatTime(doc.created_time) }}</span>
               </div>
               <span class="h-status">{{ doc.status === 'completed' ? '✅' : doc.status === 'generating' ? '⏳' : '❌' }}</span>
-              <button v-if="doc.resource_type !== 'mindmap' && doc.resource_type !== 'quiz' && !(doc.content && doc.content.trimStart().startsWith('mindmap'))" class="h-export" @click.stop="exportHistoryDoc(doc)" title="导出Word">
+              <button v-if="doc.resource_type !== 'mindmap' && doc.resource_type !== 'quiz' && doc.resource_type !== 'video' && doc.resource_type !== 'video_link' && doc.resource_type !== 'code' && doc.resource_type !== 'ppt' && !(doc.content && doc.content.trimStart().startsWith('mindmap'))" class="h-export" @click.stop="exportHistoryDoc(doc)" title="导出Word">
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
               </button>
               <button class="h-delete" @click.stop="deleteDocument(doc)" title="删除文档">
@@ -249,9 +332,12 @@ import {
   getDocs, getChapters, generateDocStream, resourceChat,
   getResourceSessions, createResourceSession,
   deleteResourceSession, renameResourceSession, getResourceSession,
-  deleteDoc, generateQuiz, gradeQuiz
+  deleteDoc, generateQuiz, gradeQuiz, generatePpt, generateVideo, generateVideoLink, generateCode
 } from '../http/http.js'
 import { marked } from 'marked'
+import VideoPlayer from '../components/VideoPlayer.vue'
+import CodeViewer from '../components/CodeViewer.vue'
+import PptViewer from '../components/PptViewer.vue'
 import mermaid from 'mermaid'
 
 const router = useRouter()
@@ -291,6 +377,9 @@ const quizScore = ref(0)
 const quizGenerating = ref(false)
 const quizResourceId = ref(null)
 const quizShowAnswers = ref(false)
+const videoScript = ref(null)
+const vlVideos = ref([])
+const vlKeyword = ref('')
 
 let mermaidReady = false
 
@@ -495,6 +584,62 @@ async function doGenerate(msg) {
     msg.generating = false
     return
   }
+  if (rt === 'code') {
+    msg.generating = true
+    previewTab.value = 'code'
+    try {
+      const result = await generateCode(chapterId, userQuery, msg.extra?.language)
+      const newDoc = { id: result.id, title: result.title || userQuery || '代码案例', content: result.content || '', resource_type: 'code', extra_data: result.extra_data || {}, status: 'completed', created_time: new Date().toISOString() }
+      docs.value.unshift(newDoc); currentDoc.value = newDoc
+    } catch (e) {
+      alert('生成失败：' + e.message)
+    }
+    msg.generating = false
+    return
+  }
+  if (rt === 'video_link') {
+    msg.generating = true
+    previewTab.value = 'video_link'
+    try {
+      const result = await generateVideoLink(chapterId, userQuery)
+      const parsed = JSON.parse(result.content || '{}')
+      vlVideos.value = parsed.videos || []
+      vlKeyword.value = parsed.keyword || ''
+      const newDoc = { id: result.id, title: userQuery || '视频推荐', content: result.content || '', resource_type: 'video_link', extra_data: result.extra_data || {}, status: 'completed', created_time: new Date().toISOString() }
+      docs.value.unshift(newDoc); currentDoc.value = newDoc
+    } catch (e) {
+      alert('搜索失败：' + e.message)
+    }
+    msg.generating = false
+    return
+  }
+  if (rt === 'ppt') {
+    msg.generating = true
+    previewTab.value = 'ppt'
+    try {
+      const result = await generatePpt(chapterId, userQuery)
+      const newDoc = { id: result.id, title: result.title || userQuery || 'PPT课件', content: result.content || '', resource_type: 'ppt', status: 'completed', created_time: new Date().toISOString() }
+      docs.value.unshift(newDoc); currentDoc.value = newDoc
+    } catch (e) {
+      alert('生成失败：' + e.message)
+    }
+    msg.generating = false
+    return
+  }
+  if (rt === 'video') {
+    msg.generating = true
+    previewTab.value = 'video'
+    try {
+      const result = await generateVideo(chapterId, userQuery)
+      try { videoScript.value = JSON.parse(result.content || '{}') } catch { videoScript.value = null }
+      const newDoc = { id: result.id, title: result.title || userQuery || '教学动画', content: result.content || '', resource_type: 'video', status: 'completed', created_time: new Date().toISOString() }
+      docs.value.unshift(newDoc); currentDoc.value = newDoc
+    } catch (e) {
+      alert('生成失败：' + e.message)
+    }
+    msg.generating = false
+    return
+  }
   if (rt === 'mindmap') {
     mindmapGenerating.value = true; mindmapContent.value = ''; mindmapSvg.value = ''
     previewTab.value = 'mindmap'
@@ -530,6 +675,10 @@ function quickMindmap(chapter) {
 }
 function selectDoc(doc) {
   currentDoc.value = doc
+  let isVideo = doc.resource_type === 'video'
+  let isCode = doc.resource_type === 'code'
+  const isVideoLink = doc.resource_type === 'video_link'
+  const isPpt = doc.resource_type === 'ppt'
   const isMindmap = doc.resource_type === 'mindmap' || (doc.content && doc.content.trimStart().startsWith('mindmap'))
   let isQuiz = doc.resource_type === 'quiz'
   // Content-based fallback: detect JSON quiz array
@@ -804,7 +953,59 @@ function formatTime(t) {
 .quiz-explanation { margin-top: 10px; margin-left: 32px; padding: 8px 12px; border-radius: 6px; background: rgba(255,255,255,0.03); font-size: 0.82rem; color: var(--text-secondary); line-height: 1.6; }
 .btn-sm { padding: 6px 14px; font-size: 0.8rem; border-radius: 6px; }
 .quiz-select-sm { padding: 4px 8px; font-size: 0.75rem; border-radius: 6px; }
+
+.quiz-panel { padding: 16px 20px; }
+.quiz-settings { display: flex; gap: 12px; align-items: center; margin-bottom: 16px; flex-wrap: wrap; }
+.quiz-q-card { background: rgba(255,255,255,0.02); border: 1px solid var(--border); border-radius: 10px; padding: 14px; margin-bottom: 12px; }
+.quiz-q-card.correct { border-color: rgba(34,197,94,0.3); background: rgba(34,197,94,0.04); }
+.quiz-q-card.wrong { border-color: rgba(239,68,68,0.3); background: rgba(239,68,68,0.04); }
+.quiz-q-header { display: flex; align-items: flex-start; gap: 8px; margin-bottom: 10px; }
+.quiz-q-num { color: var(--primary-light); font-weight: 600; min-width: 24px; }
+.quiz-q-type { font-size: 0.65rem; padding: 2px 8px; border-radius: 4px; background: rgba(255,255,255,0.05); color: var(--text-secondary); white-space: nowrap; margin-top: 2px; }
+.quiz-q-text { font-size: 0.9rem; color: var(--text-primary); line-height: 1.5; }
+.quiz-options { display: flex; flex-direction: column; gap: 6px; margin-left: 32px; }
+.quiz-opt { display: flex; align-items: center; gap: 8px; padding: 8px 12px; border-radius: 8px; background: rgba(255,255,255,0.02); border: 1px solid transparent; cursor: pointer; font-size: 0.85rem; color: var(--text-primary); transition: all 0.15s; }
+.quiz-opt:hover { background: rgba(255,255,255,0.05); }
+.quiz-opt.selected { border-color: var(--primary); background: var(--primary-bg); }
+.quiz-opt.showCorrect { border-color: rgba(34,197,94,0.3); background: rgba(34,197,94,0.06); color: var(--success); }
+.quiz-opt.showWrong { border-color: rgba(239,68,68,0.3); background: rgba(239,68,68,0.06); color: var(--danger); }
+.quiz-opt input { accent-color: var(--primary); }
+.quiz-fill { margin-left: 32px; margin-top: 8px; }
+.quiz-fill-input { width: 100%; padding: 8px 12px; border-radius: 8px; background: var(--surface); color: var(--text-primary); border: 1px solid var(--border); font-size: 0.85rem; outline: none; }
+.quiz-fill-input:focus { border-color: var(--primary); }
+.quiz-fill-textarea { width: 100%; padding: 8px 12px; border-radius: 8px; background: var(--surface); color: var(--text-primary); border: 1px solid var(--border); font-size: 0.85rem; outline: none; resize: vertical; }
+.quiz-fill-textarea:focus { border-color: var(--primary); }
+.quiz-fill-result { display: block; margin-top: 6px; font-size: 0.8rem; color: var(--text-secondary); }
+.quiz-fill-result.correct { color: var(--success); }
+.quiz-reference { margin-top: 6px; padding: 8px 12px; border-radius: 6px; background: rgba(91,127,255,0.06); font-size: 0.82rem; color: var(--text-secondary); border-left: 3px solid var(--primary); }
+.quiz-explanation { margin-top: 10px; margin-left: 32px; padding: 8px 12px; border-radius: 6px; background: rgba(255,255,255,0.03); font-size: 0.82rem; color: var(--text-secondary); line-height: 1.6; }
+.btn-sm { padding: 6px 14px; font-size: 0.8rem; border-radius: 6px; }
+.quiz-select-sm { padding: 4px 8px; font-size: 0.75rem; border-radius: 6px; }
 .quiz-input-sm { width: 50px; padding: 4px 6px; font-size: 0.75rem; border-radius: 6px; }
+.btn-outline { background: transparent; border: 1px solid var(--border); color: var(--text-primary); border-radius: 8px; padding: 8px 18px; cursor: pointer; font-size: 0.85rem; }
+.btn-outline:hover { border-color: var(--primary); color: var(--primary-light); }
+
+.h-badge.video { background: rgba(249,115,22,0.12); color: #f97316; }
+.h-badge.video-link { background: rgba(249,115,22,0.12); color: #f97316; }
+.h-badge.code-badge { background: rgba(34,197,94,0.12); color: var(--success); }
+.ppt-badge { background: rgba(139, 92, 246, 0.15); color: #a78bfa; }
+
+/* Video Link Cards */
+.vl-list { display: flex; flex-direction: column; gap: 8px; }
+.vl-header { display: flex; justify-content: space-between; align-items: center; padding: 8px 12px; margin-bottom: 4px; font-size: 0.78rem; }
+.vl-keyword { color: var(--primary-light); font-weight: 500; }
+.vl-source { color: var(--text-secondary); font-size: 0.72rem; }
+.vl-card { display: flex; align-items: center; gap: 12px; padding: 12px 14px; background: rgba(255,255,255,0.03); border: 1px solid var(--border); border-radius: 10px; cursor: pointer; transition: all 0.2s; }
+.vl-card:hover { transform: translateY(-2px); border-color: var(--primary); box-shadow: 0 4px 16px rgba(91,127,255,0.15); background: rgba(255,255,255,0.05); }
+.vl-rank { width: 28px; height: 28px; display: flex; align-items: center; justify-content: center; border-radius: 50%; background: rgba(249,115,22,0.12); color: #f97316; font-weight: 700; font-size: 0.85rem; flex-shrink: 0; }
+.vl-info { flex: 1; min-width: 0; }
+.vl-title { font-size: 0.85rem; color: var(--text-primary); line-height: 1.4; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; margin-bottom: 4px; }
+.vl-meta { display: flex; gap: 12px; font-size: 0.7rem; color: var(--text-secondary); flex-wrap: wrap; }
+.vl-author { color: var(--text-secondary); }
+.vl-play { color: var(--primary-light); }
+.vl-duration { color: var(--text-secondary); }
+.vl-arrow { flex-shrink: 0; opacity: 0.4; transition: opacity 0.2s; }
+.vl-card:hover .vl-arrow { opacity: 0.8; }
 .btn-outline { background: transparent; border: 1px solid var(--border); color: var(--text-primary); border-radius: 8px; padding: 8px 18px; cursor: pointer; font-size: 0.85rem; }
 .btn-outline:hover { border-color: var(--primary); color: var(--primary-light); }
 </style>

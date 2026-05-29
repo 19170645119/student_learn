@@ -1,4 +1,4 @@
-﻿from fastapi import APIRouter, Body, Depends, HTTPException
+from fastapi import APIRouter, Body, Depends, HTTPException
 from fastapi.responses import StreamingResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 import json
@@ -10,6 +10,7 @@ from core.agents.profile_agent import run_profile_agent_stream
 from core.auth import AuthHandler
 from schemas.profile import ProfileChatIn, ProfileOut, ProfileUpdateIn
 from schemas import ResponseOut
+from models.profile import ProfileSnapshot
 
 router = APIRouter(prefix="/profile")
 auth_handler = AuthHandler()
@@ -37,7 +38,13 @@ async def update_profile(
     repo = ProfileRepository(db)
     update_data = {k: v for k, v in data.model_dump().items() if v is not None}
     await repo.create_or_update(user_id, **update_data)
-    return ResponseOut(message="\u753b\u50cf\u66f4\u65b0\u6210\u529f")
+    # 清空画像时同步清空快照历史
+    is_clear = update_data and all(v == "" for v in update_data.values())
+    if is_clear:
+        from sqlalchemy import delete
+        await db.execute(delete(ProfileSnapshot).where(ProfileSnapshot.user_id == user_id))
+    await db.commit()
+    return ResponseOut(message="画像更新成功")
 
 
 # ==================== \u4f1a\u8bdd\u7ba1\u7406 ====================
@@ -236,10 +243,21 @@ async def chat_profile(
 
         if profile_update:
             update_data = {k: v for k, v in profile_update.items() if v}
-            if update_data:
+            # 检测是否为重置（所有维度清空）
+            all_empty = all(v == "" for v in profile_update.values())
+            if update_data or all_empty:
                 async def _update_profile(s):
                     repo = ProfileRepository(s)
-                    await repo.create_or_update(user_id, **update_data)
+                    if all_empty:
+                        # 重置：写入空值 + 清空快照历史
+                        from sqlalchemy import delete
+                        await s.execute(delete(ProfileSnapshot).where(ProfileSnapshot.user_id == user_id))
+                        await repo.create_or_update(user_id,
+                            knowledge_base="", cognitive_style="", learning_goal="",
+                            error_prone="", learning_pace="", interest_direction="",
+                            major_grade="", weekly_hours="")
+                    else:
+                        await repo.create_or_update(user_id, **update_data)
                 await _safe_write(_update_profile)
 
         for key, value in memory_updates.items():
@@ -267,3 +285,28 @@ async def chat_profile(
         yield f"data: {json.dumps({'type': 'done', 'message': reply_message, 'message_summary': message_summary, 'profile_update': profile_update, 'completed': completed, 'session_id': session_id}, ensure_ascii=False)}\n\n"
 
     return StreamingResponse(event_stream(), media_type="text/event-stream")
+
+
+@router.get("/history")
+async def get_profile_history(
+    user_id: int = Depends(auth_handler.auth_access_dependency),
+    db: AsyncSession = Depends(get_db),
+):
+    """获取画像演变历史"""
+    from sqlalchemy import select, desc
+    result = await db.execute(
+        select(ProfileSnapshot)
+        .where(ProfileSnapshot.user_id == user_id)
+        .order_by(desc(ProfileSnapshot.created_time))
+        .limit(20)
+    )
+    snapshots = result.scalars().all()
+    return [
+        {
+            "id": s.id,
+            "snapshot": s.snapshot,
+            "trigger": s.trigger,
+            "created_time": s.created_time.isoformat() if s.created_time else "",
+        }
+        for s in snapshots
+    ]

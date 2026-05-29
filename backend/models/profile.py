@@ -14,6 +14,9 @@ class StudentProfile(Base):
     error_prone: Mapped[str] = mapped_column(Text, default="", comment="易错点偏好")
     learning_pace: Mapped[str] = mapped_column(String(50), default="", comment="学习节奏(快/中/慢)")
     interest_direction: Mapped[str] = mapped_column(Text, default="", comment="兴趣方向")
+    # 新增维度 — 非雷达维度
+    major_grade: Mapped[str] = mapped_column(String(50), default="", comment="专业年级")
+    weekly_hours: Mapped[str] = mapped_column(String(20), default="", comment="每周学习时间")
     # 当前激活的会话ID
     active_session_id: Mapped[int] = mapped_column(Integer, nullable=True, comment="当前激活会话ID")
     # 扩展维度（JSON存储）
@@ -21,4 +24,13 @@ class StudentProfile(Base):
     # 对话历史
     chat_history: Mapped[list] = mapped_column(JSON, default=list, comment="画像构建对话历史")
     updated_time: Mapped[datetime] = mapped_column(DateTime, default=datetime.now, onupdate=datetime.now)
+    created_time: Mapped[datetime] = mapped_column(DateTime, default=datetime.now)
+
+class ProfileSnapshot(Base):
+    __tablename__ = "profile_snapshot"
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    user_id: Mapped[int] = mapped_column(Integer, ForeignKey("user.id", ondelete="CASCADE"))
+    profile_id: Mapped[int] = mapped_column(Integer, ForeignKey("student_profile.id"))
+    snapshot: Mapped[dict] = mapped_column(JSON, default=dict, comment="6维度快照")
+    trigger: Mapped[str] = mapped_column(String(20), default="chat", comment="chat/self_assess")
     created_time: Mapped[datetime] = mapped_column(DateTime, default=datetime.now)

@@ -1,4 +1,4 @@
-﻿const BASE_URL = 'http://127.0.0.1:8000'
+const BASE_URL = 'http://127.0.0.1:8000'
 
 const request = async (url, options = {}) => {
   const token = localStorage.getItem('token')
@@ -145,4 +145,45 @@ export const getResourceSession = (id) => get('/resource/sessions/' + id)
 // Learning Path
 export const getLearningPath = () => get('/learning-path/')
 export const generateLearningPath = () => post('/learning-path/generate')
+export const reviewCode = (resourceId, code, language) =>
+  request("/resource/" + resourceId + "/review-code", {
+    method: "POST",
+    body: JSON.stringify({ code, language }),
+  })
+
+export const generateCode = (chapterId, userQuery, language = null) => {
+  const body = { chapter_id: chapterId, resource_types: ["code"] }
+  if (userQuery) body.user_query = userQuery
+  if (language) body.extra = { language }
+  return post("/resource/generate", body)
+}
+
+export const generateVideoLink = (chapterId, userQuery) =>
+  post("/resource/generate", { chapter_id: chapterId, resource_types: ["video_link"], user_query: userQuery })
+
+export const generateVideo = (chapterId, userQuery) =>
+  post("/resource/generate", { chapter_id: chapterId, resource_types: ["video"], user_query: userQuery })
+
+// PPT
+export const generatePpt = (chapterId, userQuery) => {
+  const body = { chapter_id: chapterId, resource_types: ["ppt"] }
+  if (userQuery) body.user_query = userQuery
+  return post("/resource/generate", body)
+}
+
+export const downloadPptx = async (resourceId) => {
+  const token = localStorage.getItem("access_token")
+  const res = await fetch(BASE_URL + "/resource/" + resourceId + "/export/pptx", {
+    headers: { Authorization: "Bearer " + token },
+  })
+  if (!res.ok) throw new Error("下载失败")
+  const blob = await res.blob()
+  const url = URL.createObjectURL(blob)
+  const a = document.createElement("a")
+  a.href = url
+  a.download = "ppt_" + resourceId + ".pptx"
+  a.click()
+  URL.revokeObjectURL(url)
+}
+
 export const getRecommendResources = () => get('/learning-path/recommend')

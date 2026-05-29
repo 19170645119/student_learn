@@ -2,7 +2,7 @@ from pydantic import BaseModel, field_validator
 from typing import Optional, List
 
 
-VALID_RESOURCE_TYPES = {"doc", "mindmap", "quiz", "code", "video"}
+VALID_RESOURCE_TYPES = {"doc", "mindmap", "quiz", "code", "video", "video_link", "ppt"}
 
 
 class ResourceChatIn(BaseModel):
