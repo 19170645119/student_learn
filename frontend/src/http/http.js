@@ -172,7 +172,7 @@ export const generatePpt = (chapterId, userQuery) => {
 }
 
 export const downloadPptx = async (resourceId) => {
-  const token = localStorage.getItem("access_token")
+  const token = localStorage.getItem('token')
   const res = await fetch(BASE_URL + "/resource/" + resourceId + "/export/pptx", {
     headers: { Authorization: "Bearer " + token },
   })
